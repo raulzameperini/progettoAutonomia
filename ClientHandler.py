@@ -1,6 +1,6 @@
 import threading, socket, pickle
 from PIL import Image
-import numpy as np
+
 
 class ClientHandler(threading.Thread):
     def __init__(self, clientSocket, clientAddress, clients):
