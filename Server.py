@@ -1,8 +1,10 @@
 import socket
-import threading
-import psutil
-from time import sleep
 import ClientHandler
+import threading
+import psutil 
+from time import sleep
+
+
 
 class Sever:
     def __init__(self, TCPport, UDPport):
@@ -23,5 +25,28 @@ class Sever:
 
         if connection:
             broadcastingUDP_Thread = threading.Thread(target=self.__BroadcastingUDP, args=())
-            broadcastingUDP_Thread.start() 
+            broadcastingUDP_Thread.start()
+
+            while True:
+                try:
+                    (clientSocket, clientAddress) = self.__TCPsocket.accept()
+                    client = ClientHandler.ClientHandler(clientSocket, clientAddress, self.__clients)
+                    (ipClient, portClient) = clientAddress
+                    self.__clients[(ipClient, portClient)] = client
+                    client.start()
+                except Exception as e:
+                    pass
+        
+    def __BroadcastingUDP(self):
+        udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udpSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
+        message = f"{self.__TCPport}"
+        while True:
+            for interface, addrs in psutil.net_if_addrs().items():
+                for addr in addrs:
+                    if addr.family == socket.AF_INET and not addr.address.startswith("127."):
+                        udpSocket.sendto(message.encode("utf-8"), (addr.broadcast, self.__UDPport))
+                        sleep(5) 
+                
+                
     

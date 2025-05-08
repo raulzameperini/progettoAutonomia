@@ -1,7 +1,6 @@
 import threading
 
-
-class MTClientHandler(threading.Thread):
+class ClientHandler(threading.Thread):
     def __init__(self, clientSocket, clientAddress, clients):
 
         self.__clients = clients
