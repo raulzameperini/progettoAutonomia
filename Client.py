@@ -3,7 +3,7 @@ import threading
 from time import sleep
 
 
-class MTClient:
+class Client:
     def __init__(self, UDPport):
         self.__serverIPAddress = None
         self.__serverPort = None
