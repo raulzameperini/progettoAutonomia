@@ -55,13 +55,18 @@ class Server:
         udpSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
         message = f"{self.__TCPport}"
         while True:
-            # Per ogni interfaccia di rete attiva
-            for interface, addrs in psutil.net_if_addrs().items():
-                for addr in addrs:
-                    # Solo indirizzi IPv4 non di loopback
-                    if addr.family == socket.AF_INET and not addr.address.startswith("127."):
-                        # Invia il messaggio in broadcast sulla rete
-                        udpSocket.sendto(message.encode("utf-8"), (addr.broadcast, self.__UDPport))
-                        sleep(1)  # Attende 5 secondi prima di ripetere
-                
+            try:
+                for interface, addrs in psutil.net_if_addrs().items():
+                    for addr in addrs:
+                        if addr.family == socket.AF_INET and not addr.address.startswith("127."):
+                            broadcast_ip = addr.broadcast or "255.255.255.255"
+                            try:
+                                udpSocket.sendto(message.encode("utf-8"), (broadcast_ip, self.__UDPport))
+                                print(f"[BROADCAST] Inviato a {broadcast_ip}:{self.__UDPport}")
+                            except Exception as e:
+                                print(f"[ERRORE] Invio fallito su {broadcast_ip}: {e}")
+                sleep(5)
+            except Exception as e:
+                print(f"[ERRORE] Ciclo broadcast interrotto: {e}")
+                break
     
