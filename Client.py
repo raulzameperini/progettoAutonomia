@@ -68,15 +68,27 @@ class Client:
                 dataAltezza = str(input(""))
                 print("Specifica la larghezza del pixel")
                 dataLarghezza = str(input(""))
-                print("Specifica un colore, esempio:([255,0,0])")
-                dataColore = str(input(""))
+                print("Specifica un colore in formato esadecimale, esempio: #FF0000")
+                dataColore = input("").strip()
 
-                pixel = (dataAltezza, dataLarghezza, dataColore) #Crear il pacchetto di modifica
+                # Controllo e conversione colore esadecimale
+                if dataColore.startswith("#") and len(dataColore) == 7:
+                    try:
+                        r = int(dataColore[1:3], 16)
+                        g = int(dataColore[3:5], 16)
+                        b = int(dataColore[5:7], 16)
+                        coloreRGB = [r, g, b]
+                    except ValueError:
+                        print("Formato colore non valido. Riprova.")
+                        continue
+                else:
+                    print("Formato colore non valido. Riprova.")
+                    continue
 
-                self.__TCPsocket.send(pixel)
+                pixel = (dataAltezza, dataLarghezza, coloreRGB)  # Crea il pacchetto di modifica
+
+                self.__TCPsocket.send(pickle.dumps(pixel))
                 self.__TCPsocket.close()
-                
-
         except Exception:
             print("__Sender: E' successo qualcosa di brutto...")
             exit(1)
@@ -101,7 +113,7 @@ class Client:
         print(f"\nRicevuto: {address}:{receivedData}")
         # Salvo i valori
         # Mi serve solo l'indirizzo IP del server, che si trova sull'header pacchetto UDP
-        (self.__serverIpAddress, _) = address
+        (self.__serverIPAddress, _) = address
         # La porta di ascolto del server si trova all'interno del pacchetto UDP
         self.__serverPort = int(receivedData)
 
