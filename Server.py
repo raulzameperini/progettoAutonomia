@@ -7,22 +7,16 @@ from time import sleep
 # Classe principale del server
 class Server:
     def __init__(self, TCPport, UDPport):
-        # Imposta l'indirizzo IP su tutte le interfacce disponibili
-        self.__ipAddress = "0.0.0.0"
-        # Porta TCP su cui il server ascolta
-        self.__TCPport = TCPport
-        # Porta UDP per il broadcasting
-        self.__UDPport = UDPport
-        # Crea il socket TCP
-        self.__TCPsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Dizionario per tenere traccia dei clien t connessi
-        self.__clients = {}
+        self.__ipAddress = "0.0.0.0"                 # Ascolta su tutte le interfacce
+        self.__TCPport = TCPport                     # Porta TCP per i client
+        self.__UDPport = UDPport                     # Porta UDP per il broadcast
+        self.__TCPsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Socket TCP
+        self.__clients = {}                          # Dizionario dei client connessi
 
-    # Avvia il server
     def Start(self):
+        # Avvia il server TCP e il thread di broadcast UDP
         connection = False
         try:
-            # Effettua il bind del socket TCP e inizia ad ascoltare
             self.__TCPsocket.bind((self.__ipAddress, self.__TCPport))
             self.__TCPsocket.listen(10)
             connection = True
@@ -31,7 +25,7 @@ class Server:
             print(f"Qualcosa è andato storto nell'avvio del server: {str(e)}")
 
         if connection:
-            # Avvia un thread per il broadcasting UDP
+            # Avvia il thread per il broadcast UDP
             broadcastingUDP_Thread = threading.Thread(target=self.__BroadcastingUDP, args=())
             broadcastingUDP_Thread.start()
 
@@ -39,18 +33,16 @@ class Server:
             while True:
                 try:
                     (clientSocket, clientAddress) = self.__TCPsocket.accept()
-                    # Crea un gestore per il nuovo client
+                    # Crea un handler per il nuovo client
                     client = ClientHandler.ClientHandler(clientSocket, clientAddress, self.__clients)
                     (ipClient, portClient) = clientAddress
-                    # Aggiunge il client al dizionario dei client connessi
                     self.__clients[(ipClient, portClient)] = client
-                    # Avvia il thread del client handler
-                    client.start()
+                    client.start() # Avvia il thread del client handler
                 except Exception as e:
                     pass  # Ignora eventuali errori nell'accettare connessioni
         
-    # Metodo privato per il broadcasting UDP della porta TCP
     def __BroadcastingUDP(self):
+        # Invia periodicamente la porta TCP tramite UDP broadcast su tutte le interfacce
         udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udpSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
         message = f"{self.__TCPport}"
@@ -69,4 +61,3 @@ class Server:
             except Exception as e:
                 print(f"[ERRORE] Ciclo broadcast interrotto: {e}")
                 break
-    
