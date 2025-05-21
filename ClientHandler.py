@@ -1,26 +1,28 @@
-import threading, socket, pickle
-import numpy as np
 
-# Immagine bianca globale (100x100, RGB)
+import threading, pickle      # Importa moduli per thread e serializzazione(conversione oggetti in sequenza di byte) import numpy as np                    # Importa numpy per manipolare l'immagine come matrice (array multidimensionale)
+import numpy as np            # Importa numpy per usare  l'immagine come matrice (array multidimensionale)
+
+# Crea un'immagine bianca globale di 100x100 pixel, 3 sonno i canali RGB(255,255,255) e imposta il tipo di dato a unsigned int 8 bit
 image = np.ones((100, 100, 3), dtype=np.uint8) * 255
-
-global_mutex = threading.Lock()
+# Mutex  per evitare che più thread modifichino contemporaneamente l'immagine 
+# è glovale perchè deve essere condivisa tra più thread
+global_mutex = threading.Lock()      
 
 class ClientHandler(threading.Thread):
     def __init__(self, clientSocket, clientAddress, clients):
-        super().__init__()
+        super().__init__()              # Inizializza il thread
         self.__clients = clients                      # Dizionario di tutti i client connessi
         self.__clientSocket = clientSocket            # Socket del client gestito da questo handler
         self.__clientAddress = clientAddress          # Indirizzo del client
-                       # Mutex per la sincronizzazione sull'immagine
+                     
 
     def Write(self, message):
-        # Invia un messaggio serializzato al client
+        # Invia i byte del messaggio serializzato al client
         self.__clientSocket.sendall(message)
 
     def run(self):
         # Metodo principale del thread: gestisce la comunicazione con il client
-        global image
+        global image # deve essere global oerchè va condivisa tra tutti i client connessi al server
         try:
             while True:
                 data = self.__clientSocket.recv(1500) # Riceve dati dal client
@@ -32,13 +34,18 @@ class ClientHandler(threading.Thread):
                 y = int(pixel[0])                     # Altezza (riga)
                 x = int(pixel[1])                     # Larghezza (colonna)
                 colore = pixel[2]                     # Colore RGB
+                blocco_altezza = int(pixel[3])
+                blocco_larghezza = int(pixel[4])
 
                 with global_mutex:           # Modifica il pixel solo se le coordinate sono valide
                     if 0 <= y < image.shape[0] and 0 <= x < image.shape[1]:
                         
-                        for x in range(dataLarghezza-1,dataLarghezza+1):
-                            for y in range(dataAltezza-1,dataAltezza+1):
-                                image[y, x] = colore
+                        for dy in range(blocco_altezza):
+                            for dx in range(blocco_larghezza):
+                                ny = y + dy
+                                nx = x + dx
+                                if 0 <= ny < image.shape[0] and 0 <= nx < image.shape[1]:
+                                    image[ny, nx] = colore
                                 
                                 
                         img_data = pickle.dumps(image)    # Serializza l'immagine aggiornata

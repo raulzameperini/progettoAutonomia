@@ -1,8 +1,8 @@
 import socket, pickle                # Importa i moduli per la comunicazione di rete e la serializzazione
 from PIL import Image                # Importa la libreria PIL per la gestione delle immagini
 import threading                     # Importa il modulo per la gestione dei thread
-from time import sleep# Importa la funzione sleep per le attese temporali
-import matplotlib.pyplot as plt
+from time import sleep               # Importa la funzione sleep per le attese 
+
 
 class Client:
     def __init__(self, UDPport):
@@ -48,24 +48,23 @@ class Client:
                 sleep(5)
 
     def __Receiver(self):
-        # Thread che riceve immagini dal server
+        # Thread che riceve immagini dal server e le mostra 
         try:
             while True:
                 # Attende una risposta dal server (immagine serializzata)
                 receivedData = self.__TCPsocket.recv(65536)  
 
                 if receivedData:
-                    image = pickle.loads(receivedData) # Deserializza l'immagine (array NumPy)
-                    print("Ricevuta immagine:", image.shape)
-    
-                    plt.imshow(image)
-                    plt.axis('off')
-                    plt.show()
-                    # img = Image.fromarray(image)       # Converte da array NumPy a immagine PIL
-                    # img.show() # Mostra l'immagine
-                    # img.save("debug_image.png")
-                    # sleep(2) 
+                    # Deserializza l'immagine ricevuta (array NumPy)
+                    image = pickle.loads(receivedData) 
+                    print("Ricevuta immagine")
+                    # Converte l'array NumPy in una immagine PIL e la mostra
+                    img = Image.fromarray(image) 
+                    img.show()
+                    # Aspetta 2 secondi per evitare sovrapposizioni rapide
+                    sleep(2) 
                 if not receivedData:
+                    # Se il server ha chiuso la connessione
                     print("Il server non risponde più:/")
                     break
 
@@ -76,14 +75,26 @@ class Client:
     def __Sender(self):
         # Thread che invia le modifiche dei pixel al server
         try:
-            while True:            
-                print("Specifica l'altezza del pixel")
-                dataAltezza = str(input(""))
-                print("Specifica la larghezza del pixel")
-                dataLarghezza = str(input(""))
+            while True:
+                # Funzione interna per controllare se è un intero 
+                def leggi_intero(messaggio):
+                    while True:
+                        valore = input(messaggio).strip() #Chiede all'utente un input e rimuovere eventuali spazi 
+                        if valore.isdigit():  # Controlla se il valore inserito è composto solo da cifre ( un numero intero positivo)
+                            return int(valore)
+                        else:
+                            print("Inserisci un numero valido.")            
+                x= leggi_intero("Scrivi la coordinata x del pixel (colonna):")
+                y = leggi_intero("Scrivi la coordinata  Y del pixel (riga): ")
+
+                # per verificare che le coordinate siano nei limiti 0–100 dell'immagine
+                if not (0 <= x <= 100 and 0 <= y <= 100):
+                    print("Coordinate fuori dai limiti. Inserisci valori tra 0 e 99.")
+                    continue
                 print("Specifica un colore in formato esadecimale, esempio: #FF0000")
                 dataColore = input("").strip()
-
+                blocco_larghezza = leggi_intero("Inserisci la larghezza del blocco da colorare:")
+                blocco_altezza = leggi_intero("Inserisci l'altezza del blocco da colorare:")
                 # Controllo e conversione colore esadecimale
                 if dataColore.startswith("#") and len(dataColore) == 7:
                     try:
@@ -93,18 +104,21 @@ class Client:
                         coloreRGB = [r, g, b]
                     except ValueError:
                         print("Formato colore non valido. Riprova.")
-                        continue
+                        continue #Riparte da capo con il codice
                 else:
                     print("Formato colore non valido. Riprova.")
                     continue
+                
+                
+                pixel = (x, y, coloreRGB, blocco_altezza, blocco_larghezza)  #  Crea pacchetto con coordinate, colore e dimensione del blocco
 
-                pixel = (dataAltezza, dataLarghezza, coloreRGB)  # Crea il pacchetto di modifica
+                self.__TCPsocket.send(pickle.dumps(pixel))       # Serializza e invia il pacchetto al server via TCP
 
-                self.__TCPsocket.send(pickle.dumps(pixel))       # Serializza e invia il pacchetto al server
-                #self.__TCPsocket.close()                         # Chiude la connessione TCP dopo l'invio (probabilmente da correggere)
-        except Exception:
-            print("__Sender: E' successo qualcosa di brutto...")
+        except Exception as e:
+            print(f"__Sender: E' successo qualcosa di brutto... {e}" )
             exit(1)
+    
+    
 
     def __UDPListener(self):
         # Thread che ascolta il "volantino" UDP dal server per scoprire IP e porta TCP
@@ -122,9 +136,9 @@ class Client:
         (data, address) = self.__UDPsocket.recvfrom(1500)
         receivedData = data.decode("utf-8")
         print(f"\nRicevuto: {address}:{receivedData}")
-        # Salva l'indirizzo IP del server (dal pacchetto UDP)
+        # Salva l'indirizzo IP del server dal pacchetto UDP
         (self.__serverIPAddress, _) = address
-        # Salva la porta TCP del server (dal contenuto del pacchetto UDP)
+        # Salva la porta TCP del server dal contenuto del pacchetto UDP
         self.__serverPort = int(receivedData)
 
         self.__UDPsocket.close()  # Chiude la socket UDP dopo aver ricevuto il messaggio
